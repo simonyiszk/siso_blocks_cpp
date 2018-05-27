@@ -36,12 +36,15 @@
 
 //TODO changeble time constant
 
-template<typename input_type = unsigned int, typename storagetype = float, unsigned int decimate_factor = 3> //delay: how many samples to do discharging after
+template<typename input_type = unsigned int, typename storagetype = float, const unsigned int decimate_factor = 3> //delay: how many samples to do discharging after
 class virtual_charge_pump
 {
 private:    
     storagetype out;
     unsigned int counter;
+    
+   const storagetype downfall_factor = 0.4;
+    
 public:
     /**
      * @todo write docs
@@ -63,7 +66,8 @@ public:
         else{
             counter--;
             if(counter == 0){
-                out*=0.9;
+                storagetype temp = out * downfall_factor;
+                out = (temp > sample) ? temp : sample;
                 counter = decimate_factor;
             }
         }
@@ -74,7 +78,9 @@ public:
         return pull();
     }
     
-    virtual_charge_pump(){    
+    virtual_charge_pump(const storagetype& downfall_factor):
+    downfall_factor(downfall_factor)
+    {    
         out     = 0;
         counter = decimate_factor;
     };
