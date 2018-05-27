@@ -31,11 +31,13 @@
 #include <array>
 #include "siso.h"
 #include <limits>
+#include <cmath>
+#include <math.h>
 
 /**
  * @todo write docs
  */
-template<typename input_type = unsigned int, typename storagetype = float>
+template<typename storagetype, typename input_type>
 class normalizer : public siso<input_type, storagetype>
 {
 private:
@@ -49,55 +51,75 @@ public:
     virtual const storagetype& pull() /*noexcept*/ override;
     virtual void put(const input_type& sample) override;
     
-    const storagetype& getMin();
-    const storagetype& getMax();
+    const storagetype& getMin() { return min; }
+    const storagetype& getMax() { return max; }
+    
+    const storagetype& pass(const input_type& sample){
+        put(sample);
+        return pull();
+    }
     
     normalizer();
     
     void reset() noexcept;
+    
+    void decrease_top(){
+        max*=0.9;
+    }
+    
+    void increase_bottom(){
+        min*=1.2;
+    }
 };
 
-template<typename input_type, typename storagetype> const storagetype & normalizer<input_type, storagetype>::getMax()
-{
-    return max;
-}
-
-template<typename input_type, typename storagetype> const storagetype & normalizer<input_type, storagetype>::getMin()
-{
-    return min;
-}
-
-
-
-template<typename input_type, typename storagetype> const storagetype& normalizer<input_type, storagetype>::pull()
+template<typename storagetype, typename input_type> const storagetype& normalizer<storagetype, input_type>::pull()
 {
     return out;
 }
 
-template<typename input_type, typename storagetype> normalizer<input_type, storagetype>::normalizer()
+template<typename storagetype, typename input_type> normalizer<storagetype, input_type>::normalizer()
 {
     min  = std::numeric_limits<storagetype>::max();
-    max  = std::numeric_limits<storagetype>::min();
+    max  = std::numeric_limits<storagetype>::lowest();
     
     out  = 0;
 }
 
-template <typename input_type, typename storagetype>
-void normalizer<input_type, storagetype>::put(const input_type& sample)
+template <typename storagetype, typename input_type>
+void normalizer<storagetype, input_type>::put(const input_type& sample)
 {
+    if(std::numeric_limits<input_type>::has_signaling_NaN){
+        if(isnan(sample)){
+            out = 0;
+            return;
+        }
+    }
+    
+    if(std::numeric_limits<input_type>::has_infinity){
+        if(isinf(sample)){
+            out = 100;
+            return;
+        }
+    }
+        
     if(max<sample)
         max=sample;
     
     if(min>sample)
         min=sample;
     
-    out  = 100*(sample - min)/(max-min);
+    if((max - min) < std::numeric_limits<storagetype>::epsilon()){
+        out = 0;
+        return;
+    }
+        
+    out = (sample - min)/(max-min)*100;
 }
 
-template<typename input_type, typename storagetype> void normalizer<input_type, storagetype>::reset() noexcept
+template<typename storagetype, typename input_type> void normalizer<storagetype, input_type>::reset() noexcept
 {
     min  = std::numeric_limits<storagetype>::max();
-    max  = std::numeric_limits<storagetype>::min();
+    max  = std::numeric_limits<storagetype>::lowest();
 }
 
 
