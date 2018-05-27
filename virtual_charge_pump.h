@@ -1,4 +1,4 @@
-
+//From: https://github.com/simonyiszk/siso_blocks_cpp
 /*
  * Copyright (c) 2018 Kiss Adam <email>
  *
@@ -29,7 +29,6 @@
 
 #include <stddef.h>
 #include <array>
-#include "siso.h"
 #include <limits>
 
 /**
@@ -38,8 +37,8 @@
 
 //TODO changeble time constant
 
-template<typename input_type = unsigned int, typename storagetype = float, unsigned int delay = 60> //delay: how many samples to do discharging after
-class charge_pump : public siso<input_type, storagetype>
+template<typename input_type = unsigned int, typename storagetype = float, unsigned int decimate_factor = 3> //delay: how many samples to do discharging after
+class virtual_charge_pump
 {
 private:    
     storagetype out;
@@ -48,45 +47,32 @@ public:
     /**
      * @todo write docs
      */
-    virtual const storagetype& pull() /*noexcept*/ override;
-    virtual void put(const input_type& sample) override;
+    const storagetype& pull(){
+        return out;
+    };
     
-    charge_pump();
-    
-    void reset() noexcept;
-};
-
-template<typename input_type, typename storagetype, unsigned int delay> const storagetype& charge_pump<input_type, storagetype, delay>::pull()
-{
-    return out;
-}
-
-template<typename input_type, typename storagetype, unsigned int delay> charge_pump<input_type, storagetype, delay>::charge_pump()
-{    
-    out     = 0;
-    counter = delay;
-}
-
-template <typename input_type, typename storagetype, unsigned int delay>
-void charge_pump<input_type, storagetype, delay>::put(const input_type& sample)
-{
-    if(out<sample)
-        out=sample;
-    else{
-        counter--;
-        if(counter == 0){
-            out*=0.99;
-            counter = delay;
+    void put(const input_type& sample){
+        if(out<sample)
+            out=sample;
+        else{
+            counter--;
+            if(counter == 0){
+                out*=0.9;
+                counter = decimate_factor;
+            }
         }
     }
-}
-
-template<typename input_type, typename storagetype, unsigned int delay> void charge_pump<input_type, storagetype, delay>::reset() noexcept
-{
-    out  = std::numeric_limits<storagetype>::min();
-    counter = delay;
-}
-
+    
+    charge_pump(){    
+        out     = 0;
+        counter = decimate_factor;
+    };
+    
+    void reset() noexcept{
+        out  = std::numeric_limits<storagetype>::lowest();
+        counter = decimate_factor;
+    };
+};
 
 #endif // VIRTUAL_CHARGE_PUMP_H
 
