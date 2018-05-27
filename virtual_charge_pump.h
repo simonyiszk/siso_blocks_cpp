@@ -28,7 +28,6 @@
 #define VIRTUAL_CHARGE_PUMP_H
 
 #include <stddef.h>
-#include <array>
 #include <limits>
 
 /**
@@ -52,6 +51,13 @@ public:
     };
     
     void put(const input_type& sample){
+        if(std::numeric_limits<input_type>::has_signaling_NaN){
+            if(isnan(sample)){
+                out = 0;
+                return;
+            }
+        }
+        
         if(out<sample)
             out=sample;
         else{
@@ -63,7 +69,12 @@ public:
         }
     }
     
-    charge_pump(){    
+    const storagetype pass(const input_type& sample){
+        put(sample);
+        return pull();
+    }
+    
+    virtual_charge_pump(){    
         out     = 0;
         counter = decimate_factor;
     };
